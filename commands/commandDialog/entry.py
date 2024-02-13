@@ -6,6 +6,10 @@ from ... import config
 app = adsk.core.Application.get()
 ui = app.userInterface
 
+#### 
+# Feedback:
+# Plugin creates a new window for some reason, includes prior history
+# Need to handle self intersections in a better way.
 
 # TODO *** Specify the command identity information. ***
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'
@@ -161,7 +165,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     
 
     # commands text box input.
-    inputs.addTextBoxCommandInput('text_box', 'enter commnds', wire_bender.command_string, 10, False)
+    inputs.addTextBoxCommandInput('text_box', 'enter bendscript', wire_bender.command_string, 10, False)
 
     # wire diameter imput
     defaultLengthUnits = app.activeProduct.unitsManager.defaultLengthUnits
@@ -179,11 +183,8 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # This event handler is called when the user clicks the OK button in the command dialog or 
 # is immediately called after the created event not command inputs were created for the dialog.
 def command_execute(args: adsk.core.CommandEventArgs):
-    # General logging for debug.
-    
-    # TODO ******************************** Your code here ********************************
     # Get the root component of the active design.
-    doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+    # doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
     design = app.activeProduct
     rootComp = design.rootComponent
     sketches = rootComp.sketches
@@ -196,7 +197,6 @@ def command_execute(args: adsk.core.CommandEventArgs):
     value_input: adsk.core.ValueCommandInput = inputs.itemById('value_input')
     
      
-
     wire_bender.parse_commands(text_box.text)
     points=wire_bender.points
     lines_seg=[]
@@ -215,7 +215,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
             arc = sketch.sketchCurves.sketchArcs.addFillet(line1, line1.endSketchPoint.geometry, line2, line2.startSketchPoint.geometry, value_input.value/2)
         
         except:
-            # futil.log(f'{CMD_NAME} No fillet to add')
+            futil.log(f'{CMD_NAME} No fillet to add')
             lines_seg[i].endSketchPoint.merge(lines_seg[i+1].startSketchPoint)
     #contruction plane perpendicular to the path line
     planes = rootComp.constructionPlanes
@@ -235,12 +235,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
     sweepInput = sweeps.createInput(prof,path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
     sweepInput.orientation = adsk.fusion.SweepOrientationTypes.PerpendicularOrientationType
     sweep = sweeps.add(sweepInput)
-
-    # Do something interesting
-    # text = text_box.text
-    # expression = value_input.expression
-    # msg = f'Your text: {text}<br>Your value: {expression}'
-    # ui.messageBox(msg)
+    return
 
 
 # This event handler is called when the command needs to compute a new preview in the graphics window.
