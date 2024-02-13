@@ -23,7 +23,7 @@ IS_PROMOTED = True
 WORKSPACE_ID = 'FusionSolidEnvironment'
 PANEL_ID = 'SolidScriptsAddinsPanel'
 COMMAND_BESIDE_ID = 'ScriptsManagerCommand'
-
+new_run=True
 # Resource location for command icons, here we assume a sub folder in this directory named "resources".
 ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', '')
 
@@ -47,6 +47,7 @@ class WireBender:
         self.points.append(new_point)
 
     def rotate(self, angle):
+        angle = -angle
         rotation_matrix = [[1, 0, 0],
                            [0, math.cos(angle), -math.sin(angle)],
                            [0, math.sin(angle), math.cos(angle)]]
@@ -102,7 +103,7 @@ class WireBender:
                     while(end_comm[0] != 'end'):
                         end_comm = commands[end].split()
                         end=end+1
-                    for k in range(iter):    
+                    for k in range(iter-1):    
                         for j in range(start, end):
                             if commands[j].strip():
                                 parts = commands[j].split()
@@ -142,6 +143,7 @@ def start():
 
     # Specify if the command is promoted to the main toolbar. 
     control.isPromoted = IS_PROMOTED
+    
 
 
 # Executed when add-in is stopped.
@@ -159,12 +161,43 @@ def stop():
     # Delete the command definition
     if command_definition:
         command_definition.deleteMe()
+def add_toolhead():
+    if new_run:
+        rootComp = app.activeProduct.rootComponent
+        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', 'tool.obj')
+        returnValue = rootComp.meshBodies.add(filename, 1)
+        # Create a collection of entities for move
+        features = rootComp.features
+        # Create a collection of entities for move
+        bodies = adsk.core.ObjectCollection.create()
+        for i in range(returnValue.count):
+            bodies.add(returnValue.item(i))
+        
+        # Create a transform to do move
+        vector = adsk.core.Vector3D.create(0.0, 10.0, 0.0)
+        transform = adsk.core.Matrix3D.create()
+        rotX = adsk.core.Matrix3D.create()
+                # Change the transform data by rotating around Z+ axis
+
+        rotX.setToRotation(-math.pi/2, adsk.core.Vector3D.create(0,0,1), adsk.core.Point3D.create(0,0,0))
+        transform.transformBy(rotX)
+        #transform.translation = vector
+
+        # Create a move feature
+        moveFeats = features.moveFeatures
+        moveFeatureInput = moveFeats.createInput2(bodies)
+        moveFeatureInput.defineAsFreeMove(transform)
+        moveFeats.add(moveFeatureInput)
+
 
 
 # Function that is called when a user clicks the corresponding button in the UI.
 # This defines the contents of the command dialog and connects to the command related events.
 def command_created(args: adsk.core.CommandCreatedEventArgs):
     # General logging for debug.
+    global new_run
+    add_toolhead()
+    new_run = False
     futil.log(f'{CMD_NAME} Command Created Event')
 
     # https://help.autodesk.com/view/fusion360/ENU/?contextId=CommandInputs
@@ -236,8 +269,8 @@ def create_wire(component, command_text, wire_diameter):
     lines_seg=[]
     # create lines from the points
     for i in range(len(points)-1):
-        startpoint = adsk.core.Point3D.create(points[i][0], points[i][1], points[i][2])
-        endpoint = adsk.core.Point3D.create(points[i+1][0], points[i+1][1], points[i+1][2])
+        startpoint = adsk.core.Point3D.create(-(points[i][0]-points[-1][0]), -(points[i][1]-points[-1][1]), -(points[i][2]-points[-1][2]))
+        endpoint = adsk.core.Point3D.create(-(points[i+1][0]-points[-1][0]), -(points[i+1][1]-points[-1][1]), -(points[i+1][2]-points[-1][2]))
         line=lines.addByTwoPoints(startpoint, endpoint)
         lines_seg.append(line)
     
