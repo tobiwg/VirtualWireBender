@@ -271,7 +271,7 @@ def create_wire(component, command_text, wire_diameter):
     try:
         sweep = sweeps.add(sweepInput)
     except:
-        futil.log(f'{CMD_NAME}: Try reducing the size of the profile, removing regions of high curvature from the path')
+        futil.log(f'{CMD_NAME}: Try reducing the size of the wire, removing regions of high curvature from the path')
     return
 
 # This event handler is called when the command needs to compute a new preview in the graphics window.
