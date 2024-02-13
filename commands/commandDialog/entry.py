@@ -15,7 +15,7 @@ ui = app.userInterface
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'
 CMD_NAME = 'Virtual Wire Bender'
 CMD_Description = ''
-
+string_commands = ''
 # Specify that the command will be promoted to the panel.
 IS_PROMOTED = True
 
@@ -35,6 +35,8 @@ class WireBender:
     def __init__(self):
         self.points = [[0, 0, 0]]  # Starting point
         self.command_string="" #list of commands
+    def __del__(self):
+        print('deleted')
 
     def feed(self, f):
         last_point = self.points[-1]
@@ -110,7 +112,7 @@ class WireBender:
 
 
 
-wire_bender = WireBender()
+
 # Executed when add-in is run.
 def start():
     # Create a command Definition.
@@ -162,7 +164,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     
 
     # commands text box input.
-    inputs.addTextBoxCommandInput('text_box', 'enter bendscript', wire_bender.command_string, 10, False)
+    inputs.addTextBoxCommandInput('text_box', 'enter bendscript', string_commands, 10, False)
 
     # wire diameter imput
     defaultLengthUnits = app.activeProduct.unitsManager.defaultLengthUnits
@@ -182,6 +184,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 def command_execute(args: adsk.core.CommandEventArgs):
     # Get the root component of the active design.
     # doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+    global string_commands 
     design = app.activeProduct
     rootComp = design.rootComponent
     inputs = args.command.commandInputs
@@ -192,10 +195,12 @@ def command_execute(args: adsk.core.CommandEventArgs):
 
     # wrap in a timeline group
     timeline = design.timeline
-    timeline_start_marker = timeline.markerPosition
-
+    string_commands =text_box.text
     command_text = text_box.text
     wire_diameter = value_input.value
+    timeline.moveToBeginning()
+    timeline.deleteAllAfterMarker()
+    timeline_start_marker = timeline.markerPosition
     create_wire(rootComp, command_text, wire_diameter)
 
     final_timeline_pos = timeline.markerPosition - 1
@@ -210,7 +215,7 @@ def create_wire(component, command_text, wire_diameter):
     xyPlane = component.xYConstructionPlane
     sketch = sketches.add(xyPlane)
     lines = sketch.sketchCurves.sketchLines
-
+    wire_bender = WireBender()
     wire_bender.parse_commands(command_text)
     points=wire_bender.points
     lines_seg=[]
