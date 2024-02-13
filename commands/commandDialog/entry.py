@@ -19,9 +19,6 @@ CMD_Description = ''
 # Specify that the command will be promoted to the panel.
 IS_PROMOTED = True
 
-# TODO *** Define the location where the command button will be created. ***
-# This is done by specifying the workspace, the tab, and the panel, and the 
-# command it will be inserted beside. Not providing the command to position it
 # will insert it at the end.
 WORKSPACE_ID = 'FusionSolidEnvironment'
 PANEL_ID = 'SolidScriptsAddinsPanel'
@@ -187,17 +184,34 @@ def command_execute(args: adsk.core.CommandEventArgs):
     # doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
     design = app.activeProduct
     rootComp = design.rootComponent
-    sketches = rootComp.sketches
-    xyPlane = rootComp.xYConstructionPlane
-    sketch = sketches.add(xyPlane)
     inputs = args.command.commandInputs
-    lines = sketch.sketchCurves.sketchLines
+    
     #get info form the user
     text_box: adsk.core.TextBoxCommandInput = inputs.itemById('text_box')
     value_input: adsk.core.ValueCommandInput = inputs.itemById('value_input')
-    
-     
-    wire_bender.parse_commands(text_box.text)
+
+    # wrap in a timeline group
+    timeline = design.timeline
+    timeline_start_marker = timeline.markerPosition
+
+    command_text = text_box.text
+    wire_diameter = value_input.value
+    create_wire(rootComp, command_text, wire_diameter)
+
+    final_timeline_pos = timeline.markerPosition - 1
+    timeline_group = timeline.timelineGroups.add(timeline_start_marker, final_timeline_pos)
+    timeline_group.name = 'Bendscript Render'
+
+    return
+
+def create_wire(component, command_text, wire_diameter):
+
+    sketches = component.sketches
+    xyPlane = component.xYConstructionPlane
+    sketch = sketches.add(xyPlane)
+    lines = sketch.sketchCurves.sketchLines
+
+    wire_bender.parse_commands(command_text)
     points=wire_bender.points
     lines_seg=[]
     # create lines from the points
@@ -212,31 +226,30 @@ def command_execute(args: adsk.core.CommandEventArgs):
         line1=lines_seg[i]
         line2=lines_seg[i+1]
         try:
-            arc = sketch.sketchCurves.sketchArcs.addFillet(line1, line1.endSketchPoint.geometry, line2, line2.startSketchPoint.geometry, value_input.value/2)
+            arc = sketch.sketchCurves.sketchArcs.addFillet(line1, line1.endSketchPoint.geometry, line2, line2.startSketchPoint.geometry, wire_diameter/2)
         
         except:
             futil.log(f'{CMD_NAME} No fillet to add')
             lines_seg[i].endSketchPoint.merge(lines_seg[i+1].startSketchPoint)
     #contruction plane perpendicular to the path line
-    planes = rootComp.constructionPlanes
+    planes = component.constructionPlanes
     planeInput = planes.createInput()
     distance = adsk.core.ValueInput.createByReal(0.0)
     planeInput.setByDistanceOnPath(lines_seg[0], distance)
     plane1=planes.add(planeInput)
-    yzPlane = rootComp.yZConstructionPlane
+    yzPlane = component.yZConstructionPlane
     # wire diameter profile
     sketch2 = sketches.add(plane1)
     circles = sketch2.sketchCurves.sketchCircles
-    circle1 = circles.addByCenterRadius(adsk.core.Point3D.create(points[0][0], points[0][1], points[0][2]), value_input.value/2)
+    circle1 = circles.addByCenterRadius(adsk.core.Point3D.create(points[0][0], points[0][1], points[0][2]), wire_diameter/2)
     #create the sweep
     prof = sketch2.profiles.item(0)
-    path = rootComp.features.createPath(lines_seg[0])
-    sweeps = rootComp.features.sweepFeatures
+    path = component.features.createPath(lines_seg[0])
+    sweeps = component.features.sweepFeatures
     sweepInput = sweeps.createInput(prof,path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
     sweepInput.orientation = adsk.fusion.SweepOrientationTypes.PerpendicularOrientationType
     sweep = sweeps.add(sweepInput)
     return
-
 
 # This event handler is called when the command needs to compute a new preview in the graphics window.
 def command_preview(args: adsk.core.CommandEventArgs):
