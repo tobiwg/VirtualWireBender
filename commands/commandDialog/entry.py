@@ -247,7 +247,7 @@ def create_wire(component, command_text, wire_diameter):
     path = component.features.createPath(lines_seg[0])
     sweeps = component.features.sweepFeatures
     sweepInput = sweeps.createInput(prof,path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-    sweepInput.orientation = adsk.fusion.SweepOrientationTypes.PerpendicularOrientationType
+    # sweepInput.orientation = adsk.fusion.SweepOrientationTypes.PerpendicularOrientationType
     sweep = sweeps.add(sweepInput)
     return
 
