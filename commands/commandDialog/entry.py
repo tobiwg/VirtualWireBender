@@ -31,6 +31,9 @@ ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resource
 # they are not released and garbage collected.
 local_handlers = []
 
+# previous bendscript timeline groups 
+bendscript_timeline_group = None
+
 class WireBender:
     def __init__(self):
         self.points = [[0, 0, 0]]  # Starting point
@@ -183,8 +186,9 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # is immediately called after the created event not command inputs were created for the dialog.
 def command_execute(args: adsk.core.CommandEventArgs):
     # Get the root component of the active design.
-    # doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
-    global string_commands 
+    global string_commands
+    global bendscript_timeline_group
+
     design = app.activeProduct
     rootComp = design.rootComponent
     inputs = args.command.commandInputs
@@ -198,14 +202,19 @@ def command_execute(args: adsk.core.CommandEventArgs):
     string_commands =text_box.text
     command_text = text_box.text
     wire_diameter = value_input.value
-    timeline.moveToBeginning()
-    timeline.deleteAllAfterMarker()
+
+    if bendscript_timeline_group:
+        bendscript_timeline_group.deleteMe(deleteGroupAndContents=True)
+
     timeline_start_marker = timeline.markerPosition
     create_wire(rootComp, command_text, wire_diameter)
 
     final_timeline_pos = timeline.markerPosition - 1
     timeline_group = timeline.timelineGroups.add(timeline_start_marker, final_timeline_pos)
     timeline_group.name = 'Bendscript Render'
+
+    # hold the last timeline group in application memory
+    bendscript_timeline_group = timeline_group
 
     return
 
@@ -251,7 +260,7 @@ def create_wire(component, command_text, wire_diameter):
     prof = sketch2.profiles.item(0)
     path = component.features.createPath(lines_seg[0])
     sweeps = component.features.sweepFeatures
-    sweepInput = sweeps.createInput(prof,path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+    sweepInput = sweeps.createInput(prof,path, adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
     # sweepInput.orientation = adsk.fusion.SweepOrientationTypes.PerpendicularOrientationType
     sweep = sweeps.add(sweepInput)
     return
