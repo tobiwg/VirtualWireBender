@@ -163,16 +163,31 @@ def stop():
         command_definition.deleteMe()
 def add_toolhead():
     if new_run:
+        graphics_prefs = app.preferences.graphicsPreferences
+        graphics_prefs.hiddenEdgeDimming = 0
+
         rootComp = app.activeProduct.rootComponent
         filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', 'tool.obj')
-        returnValue = rootComp.meshBodies.add(filename, 1)
+
+        # put the created bodies into a component
+        occ = rootComp.occurrences.addNewComponent(adsk.core.Matrix3D.create())
+        occ.component.name = 'Wire Bender Toolhead'
+
+        toolhead_component = occ.component
+        returnValue = toolhead_component.meshBodies.add(filename, 1)
+
         # Create a collection of entities for move
-        features = rootComp.features
+        features = toolhead_component.features
+        
         # Create a collection of entities for move
         bodies = adsk.core.ObjectCollection.create()
         for i in range(returnValue.count):
             bodies.add(returnValue.item(i))
-        
+
+        # opacity_value = 0.5
+        # for i in range(toolhead_component.meshBodies.count):
+        #     toolhead_component.meshBodies.item(i).opacity = opacity_value
+
         # Create a transform to do move
         vector = adsk.core.Vector3D.create(0.0, 10.0, 0.0)
         transform = adsk.core.Matrix3D.create()
@@ -300,9 +315,18 @@ def create_wire(component, command_text, wire_diameter):
     path = component.features.createPath(lines_seg[-1])
     sweeps = component.features.sweepFeatures
     sweepInput = sweeps.createInput(prof,path, adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
+
     # sweepInput.orientation = adsk.fusion.SweepOrientationTypes.PerpendicularOrientationType
     try:
         sweep = sweeps.add(sweepInput)
+        wire_component = sweep.parentComponent
+        wire_component.name = "Bent Wire"
+        wire_body = sweep.bodies.item(0)
+        # set the appearance of the wire
+        fusionMaterials = app.materialLibraries.itemByName("Fusion Material Library")
+        red_colored_material = fusionMaterials.materials.itemByName("Aluminum, Anodized Red")
+
+        wire_body.material = red_colored_material
     except:
         futil.log(f'{CMD_NAME}: Try reducing the size of the wire, removing regions of high curvature from the path')
     return
