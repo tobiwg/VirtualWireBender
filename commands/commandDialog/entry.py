@@ -112,6 +112,12 @@ class WireBender:
                                     self.rotate(math.radians(float(parts[1])))
                                 elif parts[0] == 'bend':
                                     self.bend(math.radians(float(parts[1])))
+                    i=i+1
+                elif parts[0] == 'end':
+                    next
+                else:
+                    futil.log(f'{CMD_NAME}: the command {parts[0]} is not recognized')
+                    return
 
 
 
@@ -171,7 +177,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 
     # wire diameter imput
     defaultLengthUnits = app.activeProduct.unitsManager.defaultLengthUnits
-    default_value = adsk.core.ValueInput.createByString('3.25')
+    default_value = adsk.core.ValueInput.createByString('1.6')
     inputs.addValueInput('value_input', 'Wire Diam.', defaultLengthUnits, default_value)
 
     
@@ -240,7 +246,7 @@ def create_wire(component, command_text, wire_diameter):
         line1=lines_seg[i]
         line2=lines_seg[i+1]
         try:
-            arc = sketch.sketchCurves.sketchArcs.addFillet(line1, line1.endSketchPoint.geometry, line2, line2.startSketchPoint.geometry, wire_diameter/2)
+            arc = sketch.sketchCurves.sketchArcs.addFillet(line1, line1.endSketchPoint.geometry, line2, line2.startSketchPoint.geometry, 0.33)
         
         except:
             futil.log(f'{CMD_NAME} No fillet to add')
@@ -249,7 +255,7 @@ def create_wire(component, command_text, wire_diameter):
     planes = component.constructionPlanes
     planeInput = planes.createInput()
     distance = adsk.core.ValueInput.createByReal(0.0)
-    planeInput.setByDistanceOnPath(lines_seg[0], distance)
+    planeInput.setByDistanceOnPath(lines_seg[-1], distance)
     plane1=planes.add(planeInput)
     yzPlane = component.yZConstructionPlane
     # wire diameter profile
@@ -258,11 +264,14 @@ def create_wire(component, command_text, wire_diameter):
     circle1 = circles.addByCenterRadius(adsk.core.Point3D.create(points[0][0], points[0][1], points[0][2]), wire_diameter/2)
     #create the sweep
     prof = sketch2.profiles.item(0)
-    path = component.features.createPath(lines_seg[0])
+    path = component.features.createPath(lines_seg[-1])
     sweeps = component.features.sweepFeatures
     sweepInput = sweeps.createInput(prof,path, adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
     # sweepInput.orientation = adsk.fusion.SweepOrientationTypes.PerpendicularOrientationType
-    sweep = sweeps.add(sweepInput)
+    try:
+        sweep = sweeps.add(sweepInput)
+    except:
+        futil.log(f'{CMD_NAME}: Try reducing the size of the profile, removing regions of high curvature from the path')
     return
 
 # This event handler is called when the command needs to compute a new preview in the graphics window.
