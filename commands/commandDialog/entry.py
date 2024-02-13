@@ -43,7 +43,7 @@ class WireBender:
 
     def feed(self, f):
         last_point = self.points[-1]
-        new_point = [last_point[0] + f, last_point[1], last_point[2]]
+        new_point = [last_point[0] + f/10, last_point[1], last_point[2]]
         self.points.append(new_point)
 
     def rotate(self, angle):
